@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body onload="update()" style="font-size: 12px;font-family: sans-serif;">
+
+<div style="display: -webkit-box;"><div id="btcPrice"></div><div id="netEur" style="margin-left: 20px;"></div><div id="netHrk" style="margin-left: 20px;"></div></div>
+<table>
+	<tr>
+		<td>
+			<div id="demo"></div>
+		</td>
+		<td style="vertical-align:top;">
+			<div class="container">
+				<div id="myDivBtc"></div>
+				<div id="myDivAsk"></div>
+				<!--<div id="myDivAskAmount"></div>-->
+				<div id="myDivBid"></div>
+				<!--<div id="myDivBidAmount"></div>-->
+			</div>				
+		</td>
+	</tr>
+</div>
+
+<style>
+.container {
+  width: 1000px;
+  height: 500px;
+}
+.modebar{
+      display: none !important;
+}
+</style>
+
+<script>
+var updateDatxInProgress = false;
+var updateBtcInProgress = false;
+var tickerTime = 1000;
+var delta = 0.000000003;
+var depth = 50;
+
+var graphDataPriceBid = [];
+var graphDataPriceBidAmount = [];
+var graphDataTimeBid = [];
+var bidSpan = 0;
+
+var graphDataPriceAsk = [];
+var graphDataPriceAskAmount = [];
+var graphDataTimeAsk = [];
+var askSpan = 0;
+
+var graphDataPriceBtc = [];
+var graphDataTimeBtc = [];
+
+var graphOptions = {margin:{t:10,b:20}};
+
+var timeSlice = 120000;
+var divider = 100000;
+
+function update(){
+	updateDatx();
+	updateBtc();
+	resetFlag();
+}
+
+function drawGraphBid(price,amount){
+	if(!!price){
+		if(graphDataPriceBid.length > timeSlice){
+			graphDataPriceBid.shift();
+			graphDataTimeBid.shift();
+			//graphDataPriceBidAmount.shift();
+		}
+		
+		//var maxBidAmount = Math.max(...graphDataPriceBidAmount);
+		//var minBidAmount = Math.min(...graphDataPriceBidAmount);
+		
+		graphDataPriceBid.push(price);
+		//graphDataPriceBidAmount.push(amount/divider);
+		graphDataTimeBid.push(new Date());
+		
+		var trace1 = {
+		  x: graphDataTimeBid,
+		  y: graphDataPriceBid,
+		  type: 'scatter',
+		  shape: 'spline',
+		  smoothing: 1
+		};
+		
+		var data1 = [trace1];
+
+		Plotly.newPlot('myDivBid', data1, graphOptions);
+		
+		/*
+		var trace2 = {
+		  x: graphDataTimeBid,
+		  y: graphDataPriceBidAmount,
+		  type: 'bar'
+		};
+		
+		var data2 = [trace2];
+
+		Plotly.newPlot('myDivBidAmount', data2, {margin:{t:10,b:20},height:200});
+		*/
+	}
+}
+
+function drawGraphAsk(price,amount){
+	if(!!price){
+		if(graphDataPriceAsk.length > timeSlice){
+			graphDataPriceAsk.shift();
+			graphDataTimeAsk.shift();
+			//graphDataPriceAskAmount.shift();
+		}
+		
+		graphDataPriceAsk.push(price);
+		//graphDataPriceAskAmount.push(amount/divider);
+		graphDataTimeAsk.push(new Date());
+		
+		var trace1 = {
+		  x: graphDataTimeAsk,
+		  y: graphDataPriceAsk,
+		  type: 'scatter',
+		  shape: 'spline',
+		  smoothing: 1
+		};
+		
+		var data1 = [trace1];
+
+		Plotly.newPlot('myDivAsk', data1, graphOptions);
+		
+		/*
+		var trace2 = {
+		  x: graphDataTimeAsk,
+		  y: graphDataPriceAskAmount,
+		  type: 'bar'
+		};
+		
+		var data2 = [trace2];
+
+		Plotly.newPlot('myDivAskAmount', data2, {margin:{t:10,b:20},height:200});
+		*/
+	}
+}
+
+function drawGraphBtc(price){
+	if(!!price){
+		if(graphDataPriceBtc.length > timeSlice){
+			graphDataPriceBtc.shift();
+			graphDataTimeBtc.shift();
+		}
+		
+		graphDataPriceBtc.push(price);
+		graphDataTimeBtc.push(new Date());
+		
+		var trace1 = {
+		  x: graphDataTimeBtc,//[1, 2, 3, 4],
+		  y: graphDataPriceBtc,//[10, 15, 13, 17],
+		  type: 'scatter',
+		  shape: 'spline',
+		  smoothing: 1
+		};
+
+		var data = [trace1];
+
+		Plotly.newPlot('myDivBtc', data, graphOptions);
+	}
+}
+
+function getDatx() {
+  var xhttp = new XMLHttpRequest();
+  xhttp.onreadystatechange = function() {
+    if (this.readyState == 4 && this.status == 200) {
+	  var data = JSON.parse(this.responseText);
+	  askSum=0;
+	  bidSum=0;
+	  asks = data["tick"]["asks"];
+	  bids = data["tick"]["bids"];
+	  
+	  var htmlElements = "";
+	  htmlElements += "<table>";
+	  htmlElements += "<tr><td style='padding-right: 50px;'>bid sum</td><td style='padding-right: 50px;'>bid price</td><td style='text-align: right;'>bid amount</td><td style='padding-right: 50px;padding-left: 50px;'>ask price</td><td style='text-align: right;padding-right: 50px'>ask amount</td><td style='text-align: right;'>ask sum</td></tr>";
+	  
+	  var startingPrice = Number(bids[0][0]);
+	  var priceRowID = startingPrice+delta;
+	  for(var i=0;i<depth*2;i++){
+		rid=priceRowID.toFixed(10).substring(2);
+		htmlElements += "<tr id='r"+ rid + "'><td id='bidSum"+rid+"' style='padding-right: 50px;'></td>	<td id='bids"+rid+"'style='padding-right: 50px;'>"+rid+"</td>	<td id='bidsAmount"+rid+"' style='text-align: right;'>0</td>	<td id='asks"+rid+"' style='padding-right: 50px;padding-left: 50px;'>"+rid+"</td>	<td id='askAmount"+rid+"' style='text-align: right;padding-right: 50px'>0</td>	<td id='askSum"+rid+"' style='text-align: right;'></td>	</tr>";
+		priceRowID = Number((priceRowID-0.0000000001).toPrecision(10));
+	  }
+	  
+	  htmlElements += "</table>";
+	  $("#demo").html(htmlElements);
+	  
+	  priceRowID = startingPrice;
+	  var startingPriceAsk = Number(asks[0][0]);
+	  var askExists = true;
+	  drawGraphAsk(Number(asks[0][0])*10000000000,Number(asks[0][1]));
+	  for(var i=0;i<depth;i++){
+		rid=priceRowID.toFixed(10).substring(2);
+		var askPrice = 0;
+		var askAmount = 0;		
+		try{
+			askPrice = asks[i][0];
+			askAmount = asks[i][1];
+			askExists = true;
+		}catch(e){askExists = false;}
+		
+		while(askExists && Number(priceRowID.toPrecision(10))<=Number(askPrice).toPrecision(10)) {
+			askSumElementId = "askSum"+rid;
+			$("#"+askSumElementId).html(askSum.toLocaleString());	
+			askAmountElementId = "askAmount"+rid;
+			askSumElementId = "askSum"+rid;
+			
+			if(Number(askPrice).toFixed(10).toString() == priceRowID.toFixed(10)){
+				askSum+=Number(askAmount);
+				$("#"+askAmountElementId).html(Number(askAmount).toLocaleString());
+				colorElement(askAmountElementId, Number(askAmount));
+				$("#"+askSumElementId).html(askSum.toLocaleString());
+			}else{
+				$("#"+askSumElementId).html(askSum.toLocaleString());
+			}
+			
+			if(Number(askPrice).toFixed(10).toString() == startingPriceAsk.toFixed(10)){
+				$("tr#r"+rid).css("background-color","lightgreen");
+			}			
+			
+			priceRowID = Number((priceRowID+0.0000000001).toPrecision(10));	
+			rid=priceRowID.toFixed(10).substring(2);
+		}
+	  }		  
+	  
+	  priceRowID = startingPrice;
+	  var bidExists = true;
+	  drawGraphBid(Number(bids[0][0])*10000000000,Number(bids[0][1]));
+	  var calculateNet = true;
+	  var calculateAmount = 1277000;
+	  var netEur = 0;
+	  var btcPrice = Number($("#btcPrice").html());
+	  for(var i=0;i<depth;i++){
+		rid=priceRowID.toFixed(10).substring(2);
+		var bidPrice = 0;
+		var bidAmount = 0;
+		try{
+			bidPrice = bids[i][0];
+			bidAmount = bids[i][1];
+			bidExists = true;
+		}catch(e){bidExists = false;}
+		
+		if(calculateNet){
+			if(Number(bidAmount)>calculateAmount){
+				calculateNet = false;
+				netEur += calculateAmount*Number(bidPrice);
+				$("#netEur").html(Number(netEur)*btcPrice);
+				$("#netHrk").html(Number(netEur)*btcPrice*7.35*0.88);
+			}else{
+				netEur += Number(bidPrice) * Number(bidAmount);
+				calculateAmount -= Number(bidAmount)
+			}
+		}
+		
+		while(bidExists && Number(priceRowID.toPrecision(10))>=Number(bidPrice).toPrecision(10)) {
+			bidSumElementId = "bidSum"+rid;
+			
+			$("#"+bidSumElementId).html(bidSum.toLocaleString());		
+			
+			bidAmountElementId = "bidsAmount"+rid;
+			bidSumElementId = "bidSum"+rid;
+			
+			if(Number(bidPrice).toFixed(10).toString() == priceRowID.toFixed(10)){
+				bidSum+=Number(bidAmount);
+				$("#"+bidAmountElementId).html(Number(bidAmount).toLocaleString());
+				colorElement(bidAmountElementId, Number(bidAmount));
+				$("#"+bidSumElementId).html(bidSum.toLocaleString());
+			}else{
+				$("#"+bidSumElementId).html(bidSum.toLocaleString());
+			}
+
+			if(Number(bidPrice).toFixed(10).toString() == startingPrice.toFixed(10)){
+				$("tr#r"+rid).css("background-color","lightblue");
+			}
+			
+			priceRowID = Number((priceRowID-0.0000000001).toPrecision(10));	
+			rid=priceRowID.toFixed(10).substring(2);
+		}
+	  }
+      updateDatxInProgress = false;
+	  log("getDatx receive");
+    }
+  };
+  xhttp.open("GET", "https://api.huobi.pro/market/depth?symbol=datxbtc&type=step0", true);
+  xhttp.setRequestHeader("Accept","*/*");
+  if(!updateDatxInProgress){
+    updateDatxInProgress = true;
+	log("getDatx send");
+	xhttp.send();
+  }else{
+	log("getDatx ALREADY IN PROGRESS");
+  }
+}
+
+function getBtc(){
+  var xhttp = new XMLHttpRequest();
+  xhttp.onreadystatechange = function() {
+    if (this.readyState == 4 && this.status == 200) {
+	  var data = JSON.parse(this.responseText);
+	  $("#btcPrice").html(data.result.XXBTZEUR.c[0]);
+	  drawGraphBtc(Number(data.result.XXBTZEUR.c[0]));
+	  updateBtcInProgress = false;
+	  log("getBtc receive");
+    }
+  };
+  xhttp.open("GET", "https://api.kraken.com/0/public/Ticker?pair=xbteur", true);
+  xhttp.setRequestHeader("Accept","*/*");
+  if(!updateBtcInProgress){
+	updateBtcInProgress = true;
+	log("getBtc send");
+	xhttp.send();
+  }else{
+	log("getBtc ALREADY IN PROGRESS");
+  }
+}
+
+function colorElement(id,amount){
+	$("#"+id).css("background-color", "rgba(244, 67, 54, "+amount/500000+")");
+	/*
+	if(amount>500000){
+		$("#"+id).css("background-color", "rgba(244, 67, 54, 2)");
+	}else if(amount>300000){
+		$("#"+id).css("background-color", "rgba(244, 67, 54, 0.55)");
+	}else if(amount>100000){
+		$("#"+id).css("background-color","rgba(244, 67, 54, 0.15)");
+	}
+	*/
+}
+
+function updateDatx(){
+	setTimeout(function(){ getDatx(); updateDatx()}, tickerTime);
+}
+
+function updateBtc(){
+	setTimeout(function(){ getBtc(); updateBtc()}, tickerTime);
+}
+
+function resetFlag(){
+	setTimeout(function(){ updateDatxInProgress = false; updateBtcInProgress = false;log("Flag reset");resetFlag()}, 20000);
+}
+
+function log(m){
+	//console.log(new Date() + "   " + m);
+}
+</script>
+
+</body>
+</html>
