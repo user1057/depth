@@ -6,7 +6,7 @@
 </head>
 <body onload="update()" style="font-size: 12px;font-family: sans-serif;">
 
-<div style="display: -webkit-box;"><div id="btcPrice"></div><div id="netEur" style="margin-left: 20px;"></div><div id="netHrk" style="margin-left: 20px;"></div></div>
+<div style="display: -webkit-box;"><div id="btcPrice"></div><div id="netEur" style="margin-left: 20px;"></div><div id="netHrk" style="margin-left: 20px;"></div><input id="calculateAmount" value='1407000' style="margin-left: 20px;"></input></div>
 <table>
 	<tr>
 		<td>
@@ -43,11 +43,13 @@ var depth = 50;
 
 var graphDataPriceBid = [];
 var graphDataPriceBidAmount = [];
+var graphDataPriceBidAmountBubbleSize = [];
 var graphDataTimeBid = [];
 var bidSpan = 0;
 
 var graphDataPriceAsk = [];
 var graphDataPriceAskAmount = [];
+var graphDataPriceAskAmountBubbleSize = [];
 var graphDataTimeAsk = [];
 var askSpan = 0;
 
@@ -57,7 +59,7 @@ var graphDataTimeBtc = [];
 var graphOptions = {margin:{t:10,b:20}};
 
 var timeSlice = 120000;
-var divider = 100000;
+var divider = 50000;
 
 function update(){
 	updateDatx();
@@ -70,23 +72,30 @@ function drawGraphBid(price,amount){
 		if(graphDataPriceBid.length > timeSlice){
 			graphDataPriceBid.shift();
 			graphDataTimeBid.shift();
-			//graphDataPriceBidAmount.shift();
+			graphDataPriceBidAmount.shift();
 		}
 		
-		//var maxBidAmount = Math.max(...graphDataPriceBidAmount);
+		var maxBidAmount = Math.max(...graphDataPriceBidAmount);
 		//var minBidAmount = Math.min(...graphDataPriceBidAmount);
 		
 		graphDataPriceBid.push(price);
-		//graphDataPriceBidAmount.push(amount/divider);
+		graphDataPriceBidAmount.push(amount);
+		graphDataPriceBidAmountBubbleSize.push(amount/divider);
+		
 		graphDataTimeBid.push(new Date());
 		
 		var trace1 = {
 		  x: graphDataTimeBid,
 		  y: graphDataPriceBid,
+		  text: graphDataPriceBidAmount.map(function(e){return e.toLocaleString()}),
+		  mode: 'lines+markers',
 		  type: 'scatter',
 		  shape: 'spline',
+	      marker: {
+			size: graphDataPriceBidAmountBubbleSize
+		  },
 		  smoothing: 1
-		};
+		};		
 		
 		var data1 = [trace1];
 
@@ -111,18 +120,35 @@ function drawGraphAsk(price,amount){
 		if(graphDataPriceAsk.length > timeSlice){
 			graphDataPriceAsk.shift();
 			graphDataTimeAsk.shift();
-			//graphDataPriceAskAmount.shift();
+			graphDataPriceAskAmount.shift();
 		}
 		
 		graphDataPriceAsk.push(price);
-		//graphDataPriceAskAmount.push(amount/divider);
+		graphDataPriceAskAmount.push(amount);
+		graphDataPriceAskAmountBubbleSize.push(amount/divider);
+	
 		graphDataTimeAsk.push(new Date());
 		
+		/*
 		var trace1 = {
 		  x: graphDataTimeAsk,
 		  y: graphDataPriceAsk,
 		  type: 'scatter',
 		  shape: 'spline',
+		  smoothing: 1
+		};
+		*/
+		
+		var trace1 = {
+		  x: graphDataTimeAsk,
+		  y: graphDataPriceAsk,
+		  text: graphDataPriceAskAmount.map(function(e){return e.toLocaleString()}),
+		  mode: 'lines+markers',
+		  type: 'scatter',
+		  shape: 'spline',
+	      marker: {
+			size: graphDataPriceAskAmountBubbleSize
+		  },		  
 		  smoothing: 1
 		};
 		
@@ -235,7 +261,7 @@ function getDatx() {
 	  var bidExists = true;
 	  drawGraphBid(Number(bids[0][0])*10000000000,Number(bids[0][1]));
 	  var calculateNet = true;
-	  var calculateAmount = 1277000;
+	  var calculateAmount = $("#calculateAmount").val();
 	  var netEur = 0;
 	  var btcPrice = Number($("#btcPrice").html());
 	  for(var i=0;i<depth;i++){
