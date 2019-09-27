@@ -43,12 +43,14 @@ var depth = 50;
 
 var graphDataPriceBid = [];
 var graphDataPriceBidAmount = [];
+var graphDataPriceBidAmountBar = [];
 var graphDataPriceBidAmountBubbleSize = [];
 var graphDataTimeBid = [];
 var bidSpan = 0;
 
 var graphDataPriceAsk = [];
 var graphDataPriceAskAmount = [];
+var graphDataPriceAskAmountBar = [];
 var graphDataPriceAskAmountBubbleSize = [];
 var graphDataTimeAsk = [];
 var askSpan = 0;
@@ -76,7 +78,24 @@ function drawGraphBid(price,amount){
 		}
 		
 		var maxBidAmount = Math.max(...graphDataPriceBidAmount);
-		//var minBidAmount = Math.min(...graphDataPriceBidAmount);
+		
+		var maxBidPrice = Math.max(...graphDataPriceBid);
+		var minBidPrice = Math.min(...graphDataPriceBid);
+		
+		
+		
+		
+		/*
+		var minBidAmount = Math.min(...graphDataPriceBidAmount);
+		
+		var maxAskAmount = Math.max(...graphDataPriceAskAmount);
+		var minAskAmount = Math.min(...graphDataPriceAskAmount);	
+
+		var maxAmount = Math.max(maxBidAmount, maxAskAmount);
+		var minAmount = Math.min(minBidAmount, minAskAmount);
+		*/
+		
+		
 		
 		graphDataPriceBid.push(price);
 		graphDataPriceBidAmount.push(amount);
@@ -95,9 +114,32 @@ function drawGraphBid(price,amount){
 			size: graphDataPriceBidAmountBubbleSize
 		  },
 		  smoothing: 1
-		};		
+		};	
+
+		var trace2 = {
+		  x: graphDataTimeAsk,
+		  y: graphDataPriceAsk,
+		  text: graphDataPriceAskAmount.map(function(e){return e.toLocaleString()}),
+		  mode: 'lines+markers',
+		  type: 'scatter',
+		  shape: 'spline',
+	      marker: {
+			size: graphDataPriceAskAmountBubbleSize
+		  },		  
+		  smoothing: 1
+		};	
 		
-		var data1 = [trace1];
+		var barChart = {
+		  x: graphDataTimeBid, //graphDataTimeBid,
+		  y: graphDataPriceBidAmount.map(function(e){
+			return ((e/maxBidAmount)*((maxBidPrice-minBidPrice)/2));
+		  }),
+		  base: new Array(graphDataTimeBid.length).fill(minBidPrice),
+		  text: graphDataPriceBidAmount.map(function(e){return e.toLocaleString()}),
+		  type: 'bar'
+		};		
+	
+		var data1 = [trace1, trace2, barChart];
 
 		Plotly.newPlot('myDivBid', data1, graphOptions);
 		
@@ -139,6 +181,7 @@ function drawGraphAsk(price,amount){
 		};
 		*/
 		
+		/*
 		var trace1 = {
 		  x: graphDataTimeAsk,
 		  y: graphDataPriceAsk,
@@ -155,6 +198,7 @@ function drawGraphAsk(price,amount){
 		var data1 = [trace1];
 
 		Plotly.newPlot('myDivAsk', data1, graphOptions);
+		*/
 		
 		/*
 		var trace2 = {
