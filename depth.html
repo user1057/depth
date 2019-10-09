@@ -61,7 +61,7 @@ var graphDataTimeBtc = [];
 var graphOptions = {margin:{t:10,b:20}};
 
 var timeSlice = 120000;
-var divider = 50000;
+var divider = 100000;
 
 function update(){
 	updateDatx();
@@ -78,6 +78,7 @@ function drawGraphBid(price,amount){
 		}
 		
 		var maxBidAmount = Math.max(...graphDataPriceBidAmount);
+		var minBidAmount = Math.min(...graphDataPriceBidAmount);
 		
 		var maxBidPrice = Math.max(...graphDataPriceBid);
 		var minBidPrice = Math.min(...graphDataPriceBid);
@@ -99,7 +100,7 @@ function drawGraphBid(price,amount){
 		
 		graphDataPriceBid.push(price);
 		graphDataPriceBidAmount.push(amount);
-		graphDataPriceBidAmountBubbleSize.push(amount/divider);
+		//graphDataPriceBidAmountBubbleSize.push(amount/divider);
 		
 		graphDataTimeBid.push(new Date());
 		
@@ -111,7 +112,7 @@ function drawGraphBid(price,amount){
 		  type: 'scatter',
 		  shape: 'spline',
 	      marker: {
-			size: graphDataPriceBidAmountBubbleSize
+			size: graphDataPriceBidAmount.map(function(e){return 20*Math.exp((-10*(e/divider))/((e/divider)*(e/divider)))})
 		  },
 		  smoothing: 1
 		};	
@@ -124,11 +125,12 @@ function drawGraphBid(price,amount){
 		  type: 'scatter',
 		  shape: 'spline',
 	      marker: {
-			size: graphDataPriceAskAmountBubbleSize
+			size: graphDataPriceAskAmount.map(function(e){return 20*Math.exp((-10*(e/divider))/((e/divider)*(e/divider)))})
 		  },		  
 		  smoothing: 1
 		};	
 		
+		/*
 		var barChart = {
 		  x: graphDataTimeBid, //graphDataTimeBid,
 		  y: graphDataPriceBidAmount.map(function(e){
@@ -137,9 +139,11 @@ function drawGraphBid(price,amount){
 		  base: new Array(graphDataTimeBid.length).fill(minBidPrice),
 		  text: graphDataPriceBidAmount.map(function(e){return e.toLocaleString()}),
 		  type: 'bar'
-		};		
+		};	
+		*/
 	
-		var data1 = [trace1, trace2, barChart];
+		//var data1 = [trace1, trace2, barChart];
+		var data1 = [trace1, trace2];
 
 		Plotly.newPlot('myDivBid', data1, graphOptions);
 		
@@ -167,7 +171,7 @@ function drawGraphAsk(price,amount){
 		
 		graphDataPriceAsk.push(price);
 		graphDataPriceAskAmount.push(amount);
-		graphDataPriceAskAmountBubbleSize.push(amount/divider);
+		//graphDataPriceAskAmountBubbleSize.push(amount/divider);
 	
 		graphDataTimeAsk.push(new Date());
 		
