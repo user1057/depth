@@ -6,7 +6,7 @@
 </head>
 <body onload="update()" style="font-size: 12px;font-family: sans-serif;">
 
-<div style="display: -webkit-box;"><div id="btcPrice"></div><div id="netEur" style="margin-left: 20px;"></div><div id="netHrk" style="margin-left: 20px;"></div><input id="calculateAmount" value='1407000' style="margin-left: 20px;"></input></div>
+<div style="display: -webkit-box;"><div id="btcPrice"></div><div id="netEur" style="margin-left: 20px;"></div><div id="netHrk" style="margin-left: 20px;"></div><input id="calculateAmount" value='2352000' style="margin-left: 20px;"></input></div>
 <table>
 	<tr>
 		<td>
@@ -16,9 +16,14 @@
 			<div class="container">
 				<div id="myDivBtc"></div>
 				<div id="myDivAsk"></div>
-				<!--<div id="myDivAskAmount"></div>-->
 				<div id="myDivBid"></div>
-				<!--<div id="myDivBidAmount"></div>-->
+				<div>
+					<table id="myDivTrades">
+						<tbody>
+							<!--<tr><td>amount</td><td>price</td><td>id</td><td>trade-id</td><td>ts</td><td>direction</td></tr>-->
+						</tbody>
+					</table>
+				</div>				
 			</div>				
 		</td>
 	</tr>
@@ -36,10 +41,12 @@
 
 <script>
 var updateDatxInProgress = false;
+var updateTradesInProgress = false;
 var updateBtcInProgress = false;
 var tickerTime = 1000;
 var delta = 0.000000003;
 var depth = 50;
+var numberOfTradesToShow = 100;
 
 var graphDataPriceBid = [];
 var graphDataPriceBidAmount = [];
@@ -67,6 +74,7 @@ function update(){
 	updateDatx();
 	updateBtc();
 	resetFlag();
+	updateTrades();
 }
 
 function drawGraphBid(price,amount){
@@ -396,17 +404,95 @@ function getBtc(){
   }
 }
 
+function getTrades(){
+  var xhttp = new XMLHttpRequest();
+  xhttp.onreadystatechange = function() {
+    if (this.readyState == 4 && this.status == 200) {
+	  var data = JSON.parse(this.responseText);
+	  var htmlElements = "";
+	  
+	  
+	  var amount=0;
+	  var price=0;
+	  var direction=0;
+	  
+	  var tradeNo = data["data"].length;
+	  var rows = "";
+	  var rowCounter=0;
+	  for(var i=0;i<tradeNo;i++){
+	    //direction=data["data"][i]["data"][0]["direction"];
+		//if(direction=="sell"){
+			  if(rowCounter>=numberOfTradesToShow) break;
+			  amount=data["data"][i]["data"][0]["amount"];
+			  price=data["data"][i]["data"][0]["price"];  price=Number(price).toFixed(10).toString() 
+			  id=Number.parseFloat(data["data"][i]["data"][0]["id"]).toPrecision(30);
+			  trade_id=data["data"][i]["data"][0]["trade-id"];
+			  ts=new Date(data["data"][i]["data"][0]["ts"]);
+			  ts=dateFormat(ts);
+			  //ts.getHours()+":"+ts.getMinutes()+":"+ts.getSeconds()+"."+ts.getMilliseconds()+" "+ts.getDate()+"."+(ts.getMonth()+1)+"."+ts.getFullYear();
+			  direction=data["data"][i]["data"][0]["direction"];
+			  
+			  rows += "<tr><td style='color:red; text-align:right'>"+currencyFormat(amount)+"</td><td style='color:green'>"+price+"</td><td>"+id+"</td><td>"+trade_id+"</td><td style='color:blue'>"+ts+"</td><td>"+direction+"</td><tr>";
+			  rowCounter++
+		//}
+	  }
+
+	  console.log("trades rowCounter = " + rowCounter);
+	  
+	  if(rowCounter>0){
+		  var noOfElemToDelete = rowCounter;
+		  var rowCount = $('#myDivTrades tr').length;
+		  
+		  console.log("table rowCount="+$('#myDivTrades tr').length);
+		  if(rowCount>0 && noOfElemToDelete>0){
+			if(rowCount<=noOfElemToDelete){
+				if(noOfElemToDelete==numberOfTradesToShow){
+					$("#myDivTrades tr").slice(-numberOfTradesToShow).remove();
+				}else if(rowCount+noOfElemToDelete>numberOfTradesToShow){
+					$("#myDivTrades tr").slice(-(numberOfTradesToShow-rowCount-(noOfElemToDelete-rowCount))).remove();
+				}			
+			}else{
+				$("#myDivTrades tr").slice(-(rowCount-noOfElemToDelete)).remove();
+			}			
+		  }	  
+		  console.log("after deleteing table rowCount="+$('#myDivTrades tr').length);
+		  $("#myDivTrades tbody").append(rows);
+		  
+		  /*
+		  if($('#myDivTrades tr').length==0){
+			$("#myDivTrades tbody").append(rows);
+		  }
+		  */
+	  
+		  //$(rows).insertBefore('#myDivTrades > tbody > tr:first');
+		  //$("#myDivTrades tbody").append(rows);
+		  
+			document.querySelectorAll('#myDivTrades tr').forEach(function(e, i) {
+				if (e.textContent.trim().length == 0) { // if row is empty
+					e.parentNode.removeChild(e);
+				}
+			})
+		  
+		  console.log("after adding table rowCount="+$('#myDivTrades tr').length)
+	  }
+
+      updateTradesInProgress = false;
+	  log("getTrades receive");
+    }
+  };
+  xhttp.open("GET", "https://api.huobi.pro/market/history/trade?symbol=datxbtc&size="+numberOfTradesToShow, true);
+  xhttp.setRequestHeader("Accept","*/*");
+  if(!updateTradesInProgress){
+    updateTradesInProgress = true;
+	log("getTrades send");
+	xhttp.send();
+  }else{
+	log("getTrades ALREADY IN PROGRESS");
+  }
+}
+
 function colorElement(id,amount){
 	$("#"+id).css("background-color", "rgba(244, 67, 54, "+amount/500000+")");
-	/*
-	if(amount>500000){
-		$("#"+id).css("background-color", "rgba(244, 67, 54, 2)");
-	}else if(amount>300000){
-		$("#"+id).css("background-color", "rgba(244, 67, 54, 0.55)");
-	}else if(amount>100000){
-		$("#"+id).css("background-color","rgba(244, 67, 54, 0.15)");
-	}
-	*/
 }
 
 function updateDatx(){
@@ -421,8 +507,59 @@ function resetFlag(){
 	setTimeout(function(){ updateDatxInProgress = false; updateBtcInProgress = false;log("Flag reset");resetFlag()}, 20000);
 }
 
+function updateTrades(){
+	setTimeout(function(){ getTrades(); updateTrades()}, tickerTime);
+}
+
 function log(m){
 	//console.log(new Date() + "   " + m);
+}
+
+function dateFormat(dateObject) {
+    var d = new Date(dateObject);
+    var day = d.getDate();
+    var month = d.getMonth() + 1;
+    var year = d.getFullYear();
+    if (day < 10) {
+        day = "0" + day;
+    }
+    if (month < 10) {
+        month = "0" + month;
+    }
+    var date = day + "." + month + "." + year + ".";
+	
+	var hours = d.getHours();
+	var minutes = d.getMinutes();
+	var seconds = d.getSeconds();
+	var mili = d.getMilliseconds();
+	
+	if (hours < 10) {
+        hours = "0" + hours;
+    }
+	
+	if (minutes < 10) {
+        minutes = "0" + minutes;
+    }
+
+	if (seconds < 10) {
+        seconds = "0" + seconds;
+    }
+
+	if (mili < 10) {
+        mili = "0" + mili;
+    }
+	
+	if (mili < 100) {
+        mili = "0" + mili;
+    }	
+	
+	var time = hours + ":" + minutes + ":" + seconds + "." + mili;
+	
+    return time + " " + date;
+};
+
+function currencyFormat(num) {
+  return num.toFixed(2).replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1,')
 }
 </script>
 
